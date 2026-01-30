@@ -21,6 +21,14 @@
         <el-button @click="handleAISummary" :loading="aiLoading" class="action-btn ai-btn">
           <span>✨ AI 总结</span>
         </el-button>
+        <el-button @click="openRawView" class="action-btn" :disabled="pasteData?.isBurnAfterReading">
+          <el-icon><Document /></el-icon>
+          <span>Raw</span>
+        </el-button>
+        <el-button @click="handleDownload" class="action-btn" :disabled="pasteData?.isBurnAfterReading">
+          <el-icon><Download /></el-icon>
+          <span>下载</span>
+        </el-button>
         <el-button @click="copyToClipboard" class="action-btn">
           <el-icon><CopyDocument /></el-icon>
           <span>复制代码</span>
@@ -135,10 +143,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CopyDocument, Loading, Close, MagicStick, Document, Plus } from '@element-plus/icons-vue'
+import { CopyDocument, Loading, Close, MagicStick, Document, Plus, Download } from '@element-plus/icons-vue'
 import { LANGUAGE_OPTIONS } from '@/utils/constants'
 import { decrypt, isEncrypted } from '@/utils/crypto'
-import { getPaste } from '@/api/paste'
+import { getPaste, getRawUrl, getDownloadUrl } from '@/api/paste'
 import { summarizeContent } from '@/api/ai'
 import type { PasteData } from '@/types/paste'
 
@@ -183,6 +191,110 @@ const getLanguageLabel = (value: string) => {
 
 const goHome = () => {
   router.push('/')
+}
+
+/**
+ * 打开 Raw 纯文本视图
+ */
+const openRawView = () => {
+  const key = route.params.key as string
+  if (!key) return
+  
+  if (pasteData.value?.isBurnAfterReading) {
+    ElMessage.warning('阅后即焚内容不支持 Raw 模式')
+    return
+  }
+  
+  // 如果内容是加密的，Raw 模式也会显示加密后的内容
+  if (needsPassword.value) {
+    ElMessage.warning('加密内容的 Raw 模式会显示密文')
+  }
+  
+  window.open(getRawUrl(key), '_blank')
+}
+
+/**
+ * 下载文件
+ */
+const handleDownload = () => {
+  const key = route.params.key as string
+  if (!key) return
+  
+  if (pasteData.value?.isBurnAfterReading) {
+    ElMessage.warning('阅后即焚内容不支持下载')
+    return
+  }
+  
+  // 如果内容是加密的，需要在前端解密后下载
+  if (needsPassword.value && decryptedContent.value) {
+    // 前端生成解密后的文件下载
+    downloadDecryptedContent()
+    return
+  }
+  
+  if (needsPassword.value && !decryptedContent.value) {
+    ElMessage.warning('请先输入密码解密内容')
+    return
+  }
+  
+  // 非加密内容直接从后端下载
+  window.open(getDownloadUrl(key), '_blank')
+}
+
+/**
+ * 下载解密后的内容（前端生成）
+ */
+const downloadDecryptedContent = () => {
+  const content = displayContent.value
+  if (!content) {
+    ElMessage.warning('没有可下载的内容')
+    return
+  }
+  
+  const key = route.params.key as string
+  const syntax = pasteData.value?.syntax || 'plaintext'
+  const extension = getFileExtension(syntax)
+  const filename = `${key}${extension}`
+  
+  // 创建 Blob 并下载
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  
+  ElMessage.success('文件下载成功')
+}
+
+/**
+ * 根据语法类型获取文件扩展名
+ */
+const getFileExtension = (syntax: string): string => {
+  const extensionMap: Record<string, string> = {
+    'java': '.java',
+    'python': '.py',
+    'javascript': '.js',
+    'typescript': '.ts',
+    'cpp': '.cpp',
+    'csharp': '.cs',
+    'go': '.go',
+    'rust': '.rs',
+    'php': '.php',
+    'ruby': '.rb',
+    'html': '.html',
+    'css': '.css',
+    'json': '.json',
+    'xml': '.xml',
+    'markdown': '.md',
+    'sql': '.sql',
+    'shell': '.sh',
+    'yaml': '.yml',
+  }
+  return extensionMap[syntax?.toLowerCase()] || '.txt'
 }
 
 const copyToClipboard = async () => {

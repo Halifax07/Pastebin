@@ -14,3 +14,17 @@ export const createPaste = (data: CreatePasteRequest): Promise<CreatePasteRespon
 export const getPaste = (key: string): Promise<PasteData> => {
   return apiClient.get(`/pastes/${key}`)
 }
+
+/**
+ * 获取 Raw 内容 URL
+ */
+export const getRawUrl = (key: string): string => {
+  return `/api/pastes/${key}/raw`
+}
+
+/**
+ * 获取下载 URL
+ */
+export const getDownloadUrl = (key: string): string => {
+  return `/api/pastes/${key}/download`
+}
