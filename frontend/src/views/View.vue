@@ -197,8 +197,11 @@ const goHome = () => {
  * 打开 Raw 纯文本视图
  */
 const openRawView = () => {
-  const key = route.params.key as string
-  if (!key) return
+  const key = route.params.id as string
+  if (!key) {
+    ElMessage.error('无法获取内容标识')
+    return
+  }
   
   if (pasteData.value?.isBurnAfterReading) {
     ElMessage.warning('阅后即焚内容不支持 Raw 模式')
@@ -217,8 +220,11 @@ const openRawView = () => {
  * 下载文件
  */
 const handleDownload = () => {
-  const key = route.params.key as string
-  if (!key) return
+  const key = route.params.id as string
+  if (!key) {
+    ElMessage.error('无法获取内容标识')
+    return
+  }
   
   if (pasteData.value?.isBurnAfterReading) {
     ElMessage.warning('阅后即焚内容不支持下载')
@@ -251,7 +257,7 @@ const downloadDecryptedContent = () => {
     return
   }
   
-  const key = route.params.key as string
+  const key = route.params.id as string
   const syntax = pasteData.value?.syntax || 'plaintext'
   const extension = getFileExtension(syntax)
   const filename = `${key}${extension}`
